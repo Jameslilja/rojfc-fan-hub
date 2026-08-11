@@ -1,24 +1,94 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { CalendarDays } from "lucide-react";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
+import logo from "@/assets/roj-fc-logo.png.asset.json";
+import { supabase } from "@/integrations/supabase/client";
+
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Roj FC — Nyheter från klubben" },
+      {
+        name: "description",
+        content:
+          "Senaste nyheterna från Roj FC. Matchrapporter, truppnytt och information om klubben som grundades 2024.",
+      },
+      { property: "og:title", content: "Roj FC — Nyheter från klubben" },
+      {
+        property: "og:description",
+        content: "Senaste nyheterna, truppen och shopen för Roj FC.",
+      },
+    ],
+  }),
+  component: NewsPage,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function useNews() {
+  return useQuery({
+    queryKey: ["news"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("news")
+        .select("id, title, body, image_url, published_at")
+        .order("published_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+function NewsPage() {
+  const { data, isLoading } = useNews();
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
+    <div>
+      <section className="hero-gradient border-b border-border/70">
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-20 text-center">
+          <img src={logo.url} alt="Roj FC klubbmärke" className="h-32 w-32 md:h-40 md:w-40" />
+          <h1 className="text-glow text-5xl md:text-7xl">ROJ FC</h1>
+          <p className="max-w-xl text-base text-muted-foreground md:text-lg">
+            Est. 2024 — solen går upp över varje match. Gemenskap, glädje och fotboll med hjärta.
+          </p>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-14">
+        <h2 className="mb-8 text-3xl md:text-4xl">Senaste nytt</h2>
+        {isLoading ? (
+          <p className="text-muted-foreground">Laddar nyheter…</p>
+        ) : !data?.length ? (
+          <p className="text-muted-foreground">Inga nyheter publicerade ännu.</p>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2">
+            {data.map((item) => (
+              <article
+                key={item.id}
+                className="card-elevated overflow-hidden rounded-xl border border-border bg-card"
+              >
+                {item.image_url ? (
+                  <img
+                    src={item.image_url}
+                    alt={item.title}
+                    loading="lazy"
+                    className="h-52 w-full object-cover"
+                  />
+                ) : null}
+                <div className="p-6">
+                  <p className="mb-2 inline-flex items-center gap-2 text-xs uppercase tracking-widest text-gold">
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    {new Date(item.published_at).toLocaleDateString("sv-SE")}
+                  </p>
+                  <h3 className="text-2xl">{item.title}</h3>
+                  <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
+                    {item.body}
+                  </p>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
