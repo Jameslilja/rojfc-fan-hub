@@ -14,6 +14,8 @@ export const Route = createFileRoute("/om-oss")({
           "Roj FC grundades 2024. Läs om klubbens historia, värderingar och gemenskapen bakom laget.",
       },
       { property: "og:title", content: "Om oss — Roj FC" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:description", content: "Historien och värderingarna bakom Roj FC." },
     ],
   }),

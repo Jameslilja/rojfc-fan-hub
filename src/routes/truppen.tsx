@@ -12,6 +12,8 @@ export const Route = createFileRoute("/truppen")({
         content: "Hela Roj FC:s trupp säsongen 2024/25 med spelarnamn och tröjnummer.",
       },
       { property: "og:title", content: "Truppen — Roj FC" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       { property: "og:description", content: "Möt spelarna i Roj FC:s trupp." },
     ],
   }),

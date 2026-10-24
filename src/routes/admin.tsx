@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Session } from "@supabase/supabase-js";
-import { useEffect, useState } from "react";
-import { LogOut, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { LogOut, Plus, Trash2, Pencil, Save, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
+import { useAdminAuth } from "@/lib/auth-context";
+import { AdminInvites, AdminProfile } from "@/components/AdminExtras";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -21,33 +22,25 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex" },
       { property: "og:title", content: "Admin — Roj FC" },
       { property: "og:description", content: "Inloggning för Roj FC:s administratörer." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AdminPage,
 });
 
 function AdminPage() {
-  const [session, setSession] = useState<Session | null>(null);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setReady(true);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
-
+  const { user, ready } = useAdminAuth();
   if (!ready) return <div className="mx-auto max-w-md px-4 py-20 text-muted-foreground">…</div>;
-  if (!session) return <LoginCard />;
-  return <AdminPanel email={session.user.email ?? ""} />;
+  if (!user) return <LoginCard />;
+  return <AdminPanel key={user.id} email={user.email ?? ""} userId={user.id} />;
 }
 
 function LoginCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
@@ -62,25 +55,36 @@ function LoginCard() {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: `${window.location.origin}/admin` },
+      options: { emailRedirectTo: window.location.origin },
     });
     setBusy(false);
     if (error) toast.error(error.message);
-    else toast.success("Konto skapat! Kolla din e-post för att bekräfta.");
+    else setNotice("Kontrollera din e-post och bekräfta kontot. Endast inbjudna administratörer får redigera sidan.");
+  }
+
+  async function resetPassword() {
+    if (!email || !email.includes('@')) { toast.error('Fyll i din e-postadress först.'); return; }
+    setBusy(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/reset-password` });
+    setBusy(false);
+    if (error) toast.error('Kunde inte skicka återställningsmejlet.');
+    else setNotice('Om kontot finns skickas en länk till din e-postadress.');
   }
 
   return (
     <div className="mx-auto max-w-md px-4 py-20">
       <h1 className="text-4xl">Admin</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Logga in för att redigera nyheter, truppen och Om oss.
+        Roj FC · Administratörer
       </p>
+      {notice && <p role="status" className="mt-4 text-sm text-gold">{notice}</p>}
       <form onSubmit={signIn} className="mt-8 space-y-4 rounded-xl border border-border bg-card p-6">
         <div className="space-y-2">
           <Label htmlFor="email">E-post</Label>
           <Input
             id="email"
             type="email"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -91,6 +95,8 @@ function LoginCard() {
           <Input
             id="password"
             type="password"
+            autoComplete="current-password"
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -102,20 +108,26 @@ function LoginCard() {
         <Button type="button" variant="outline" onClick={signUp} disabled={busy} className="w-full">
           Skapa konto
         </Button>
+        <Button type="button" variant="ghost" onClick={resetPassword} disabled={busy} className="w-full">Glömt lösenord?</Button>
       </form>
     </div>
   );
 }
 
-function AdminPanel({ email }: { email: string }) {
-  const { data: isAdmin, isLoading } = useQuery({
-    queryKey: ["is-admin"],
+function AdminPanel({ email, userId }: { email: string; userId: string }) {
+  const { data: isAdmin, isLoading, error } = useQuery({
+    queryKey: ["admin", "role", userId],
     queryFn: async () => {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("role", "admin");
+      const { data, error } = await supabase.rpc('has_role', { _user_id: userId, _role: 'admin' });
       if (error) throw error;
-      return (data?.length ?? 0) > 0;
+      return data;
     },
   });
+  const { data: access } = useQuery({ queryKey: ['admin', 'access', userId], queryFn: async () => {
+    const { data, error } = await supabase.from('admin_access').select('is_owner').eq('user_id', userId).maybeSingle();
+    if (error) throw error;
+    return data;
+  }, enabled: Boolean(isAdmin) });
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-14">
@@ -136,16 +148,18 @@ function AdminPanel({ email }: { email: string }) {
 
       {isLoading ? (
         <p className="mt-10 text-muted-foreground">Kontrollerar behörighet…</p>
-      ) : !isAdmin ? (
+      ) : error ? <p className="mt-10 text-destructive">Kunde inte kontrollera behörigheten. Försök ladda om sidan.</p> : !isAdmin ? (
         <p className="mt-10 rounded-lg border border-border bg-card p-6 text-muted-foreground">
           Ditt konto saknar administratörsbehörighet. Kontakta klubbens huvudadmin.
         </p>
       ) : (
         <Tabs defaultValue="news" className="mt-10">
-          <TabsList>
+          <TabsList className="h-auto flex flex-wrap justify-start gap-1">
             <TabsTrigger value="news">Nyheter</TabsTrigger>
             <TabsTrigger value="players">Truppen</TabsTrigger>
             <TabsTrigger value="about">Om oss</TabsTrigger>
+            {access?.is_owner && <TabsTrigger value="admins">Lägg till admin</TabsTrigger>}
+            <TabsTrigger value="profile">Min profil</TabsTrigger>
           </TabsList>
           <TabsContent value="news" className="mt-6">
             <NewsAdmin />
@@ -156,6 +170,8 @@ function AdminPanel({ email }: { email: string }) {
           <TabsContent value="about" className="mt-6">
             <AboutAdmin />
           </TabsContent>
+          {access?.is_owner && <TabsContent value="admins" className="mt-6"><AdminInvites /></TabsContent>}
+          <TabsContent value="profile" className="mt-6"><AdminProfile userId={userId} /></TabsContent>
         </Tabs>
       )}
     </div>
@@ -167,6 +183,7 @@ function NewsAdmin() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["news"],
@@ -182,16 +199,16 @@ function NewsAdmin() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase
-        .from("news")
-        .insert({ title, body, image_url: imageUrl || null });
+      const values = { title: title.trim(), body, image_url: imageUrl || null };
+      const { error } = editingId ? await supabase.from('news').update(values).eq('id', editingId) : await supabase.from('news').insert(values);
       if (error) throw error;
     },
     onSuccess: () => {
       setTitle("");
       setBody("");
       setImageUrl("");
-      toast.success("Nyhet publicerad");
+      toast.success(editingId ? "Nyhet uppdaterad" : "Nyhet publicerad");
+      setEditingId(null);
       qc.invalidateQueries({ queryKey: ["news"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -218,7 +235,7 @@ function NewsAdmin() {
         }}
         className="space-y-4 rounded-xl border border-border bg-card p-6"
       >
-        <h2 className="text-2xl">Ny nyhet</h2>
+        <h2 className="text-2xl">{editingId ? 'Redigera nyhet' : 'Ny nyhet'}</h2>
         <div className="space-y-2">
           <Label htmlFor="n-title">Rubrik</Label>
           <Input id="n-title" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -229,11 +246,12 @@ function NewsAdmin() {
         </div>
         <div className="space-y-2">
           <Label htmlFor="n-img">Bild-URL (valfritt)</Label>
-          <Input id="n-img" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
+          <Input id="n-img" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
         </div>
         <Button type="submit" disabled={create.isPending}>
-          <Plus className="mr-2 h-4 w-4" /> Publicera
+          <Save className="mr-2 h-4 w-4" /> {editingId ? 'Spara nyhet' : 'Publicera'}
         </Button>
+        {editingId && <Button type="button" variant="ghost" onClick={() => { setEditingId(null); setTitle(''); setBody(''); setImageUrl(''); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
       </form>
 
       <div className="space-y-3">
@@ -248,9 +266,12 @@ function NewsAdmin() {
                 {new Date(item.published_at).toLocaleDateString("sv-SE")}
               </p>
             </div>
-            <Button variant="ghost" size="icon" onClick={() => remove.mutate(item.id)}>
+            <div className="flex shrink-0 gap-1">
+            <Button variant="ghost" size="icon" aria-label={`Redigera ${item.title}`} title="Redigera nyhet" onClick={() => { setEditingId(item.id); setTitle(item.title); setBody(item.body); setImageUrl(item.image_url ?? ''); }}><Pencil className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label={`Ta bort ${item.title}`} title="Ta bort nyhet" disabled={remove.isPending} onClick={() => { if (window.confirm('Ta bort nyheten?')) remove.mutate(item.id); }}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -263,6 +284,7 @@ function PlayersAdmin() {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [position, setPosition] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
     queryKey: ["players"],
@@ -279,19 +301,20 @@ function PlayersAdmin() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("players").insert({
-        name,
+      const values = {
+        name: name.trim(),
         shirt_number: number ? Number(number) : null,
         position: position || null,
-        sort_order: 100,
-      });
+      };
+      const { error } = editingId ? await supabase.from('players').update(values).eq('id', editingId) : await supabase.from('players').insert({ ...values, sort_order: 100 });
       if (error) throw error;
     },
     onSuccess: () => {
       setName("");
       setNumber("");
       setPosition("");
-      toast.success("Spelare tillagd");
+      toast.success(editingId ? "Spelare uppdaterad" : "Spelare tillagd");
+      setEditingId(null);
       qc.invalidateQueries({ queryKey: ["players"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -336,8 +359,9 @@ function PlayersAdmin() {
           <Input id="p-pos" value={position} onChange={(e) => setPosition(e.target.value)} />
         </div>
         <Button type="submit" disabled={create.isPending} className="sm:col-span-4 sm:w-fit">
-          <Plus className="mr-2 h-4 w-4" /> Lägg till spelare
+          <Save className="mr-2 h-4 w-4" /> {editingId ? 'Spara spelare' : 'Lägg till spelare'}
         </Button>
+        {editingId && <Button type="button" variant="ghost" className="sm:col-span-4 sm:w-fit" onClick={() => { setEditingId(null); setName(''); setNumber(''); setPosition(''); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
       </form>
 
       <div className="grid gap-2 sm:grid-cols-2">
@@ -350,9 +374,12 @@ function PlayersAdmin() {
               <span className="mr-2 text-gold">{p.shirt_number ?? "–"}</span>
               {p.name}
             </span>
-            <Button variant="ghost" size="icon" onClick={() => remove.mutate(p.id)}>
+            <div className="flex shrink-0 gap-1">
+            <Button variant="ghost" size="icon" aria-label={`Redigera ${p.name}`} title="Redigera spelare" onClick={() => { setEditingId(p.id); setName(p.name); setNumber(p.shirt_number?.toString() ?? ''); setPosition(p.position ?? ''); }}><Pencil className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" aria-label={`Ta bort ${p.name}`} title="Ta bort spelare" disabled={remove.isPending} onClick={() => { if (window.confirm('Ta bort spelaren?')) remove.mutate(p.id); }}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
+            </div>
           </div>
         ))}
       </div>
@@ -381,7 +408,7 @@ function AboutAdmin() {
     mutationFn: async () => {
       const { error } = await supabase
         .from("site_content")
-        .upsert({ key: "about", value: value ?? "" });
+        .upsert({ key: "about", value: value ?? data ?? "" });
       if (error) throw error;
     },
     onSuccess: () => {
