@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as OmOssRouteImport } from './routes/om-oss'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as TruppenRouteImport } from './routes/truppen'
 
 const IndexRoute = IndexRouteImport.update({
@@ -29,6 +30,11 @@ const OmOssRoute = OmOssRouteImport.update({
   path: '/om-oss',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TruppenRoute = TruppenRouteImport.update({
   id: '/truppen',
   path: '/truppen',
@@ -39,12 +45,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/om-oss': typeof OmOssRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/truppen': typeof TruppenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/om-oss': typeof OmOssRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/truppen': typeof TruppenRoute
 }
 export interface FileRoutesById {
@@ -52,20 +60,22 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/om-oss': typeof OmOssRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/truppen': typeof TruppenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/om-oss' | '/truppen'
+  fullPaths: '/' | '/admin' | '/om-oss' | '/reset-password' | '/truppen'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/om-oss' | '/truppen'
-  id: '__root__' | '/' | '/admin' | '/om-oss' | '/truppen'
+  to: '/' | '/admin' | '/om-oss' | '/reset-password' | '/truppen'
+  id: '__root__' | '/' | '/admin' | '/om-oss' | '/reset-password' | '/truppen'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   OmOssRoute: typeof OmOssRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   TruppenRoute: typeof TruppenRoute
 }
 
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OmOssRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/truppen': {
       id: '/truppen'
       path: '/truppen'
@@ -106,6 +123,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   OmOssRoute: OmOssRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   TruppenRoute: TruppenRoute,
 }
 export const routeTree = rootRouteImport

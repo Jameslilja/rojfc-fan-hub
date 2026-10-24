@@ -8,3 +8,8 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Admin profile data lives in profiles; authorization lives in user_roles and service-managed admin_access, never in editable profile data.
+- Admin invitation server functions verify the caller's role and owner access through the authenticated client before loading the privileged client.
+- One shared AuthProvider tracks identity with getUser and clears user-scoped admin queries on sign-out to avoid stale privileges.
+- Public /admin is the sign-in entry and gates editing inline; database RLS enforces every content mutation.

@@ -15,6 +15,8 @@ export const Route = createFileRoute("/")({
           "Senaste nyheterna från Roj FC. Matchrapporter, truppnytt och information om klubben som grundades 2024.",
       },
       { property: "og:title", content: "Roj FC — Nyheter från klubben" },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
       {
         property: "og:description",
         content: "Senaste nyheterna, truppen och shopen för Roj FC.",
