@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,17 +17,12 @@ export const Route = createFileRoute('/reset-password')({
   ] }), component: ResetPassword,
 });
 function ResetPassword() {
-  const { user, ready } = useAdminAuth();
-  const [validLink, setValidLink] = useState(false);
+  const { user, ready, passwordLink: validLink } = useAdminAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [done, setDone] = useState(false);
-  useEffect(() => {
-    const type = new URLSearchParams(window.location.hash.slice(1)).get('type');
-    setValidLink(type === 'recovery' || type === 'invite');
-  }, []);
   return <div className="mx-auto max-w-md px-4 py-20">
     <h1 className="text-4xl">Välj lösenord</h1>
     {!ready ? <p className="mt-4 text-muted-foreground">Kontrollerar länken…</p> : done ? <div className="mt-6 space-y-4"><p role="status">Ditt lösenord är sparat.</p><Button asChild><Link to="/admin">Öppna admin-sidan</Link></Button></div> : !user || !validLink ? <div className="mt-6 space-y-4"><p className="text-muted-foreground">Öppna länken i ditt inbjudnings- eller återställningsmejl. Om länken har gått ut, begär en ny på admin-sidan.</p><Button asChild variant="outline"><Link to="/admin">Till Admin</Link></Button></div> : <form className="mt-8 space-y-4" onSubmit={async e => {
