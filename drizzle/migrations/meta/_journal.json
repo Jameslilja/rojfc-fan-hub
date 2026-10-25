@@ -15,6 +15,20 @@
       "when": 1792793506074,
       "tag": "0001_private_admin_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792917049096,
+      "tag": "0002_player_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792917113060,
+      "tag": "0003_club_media_access",
+      "breakpoints": true
     }
   ]
 }

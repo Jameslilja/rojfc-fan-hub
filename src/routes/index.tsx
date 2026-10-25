@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays } from "lucide-react";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ContentDetailDialog } from "@/components/ContentDetailDialog";
+import { resolveClubImages } from "@/lib/club-media";
 
 import logo from "@/assets/roj-fc-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,13 +39,15 @@ function useNews() {
         .select("id, title, body, image_url, published_at")
         .order("published_at", { ascending: false });
       if (error) throw error;
-      return data;
+      return resolveClubImages(data);
     },
   });
 }
 
 function NewsPage() {
   const { data, isLoading } = useNews();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = data?.find(item => item.id === selectedId);
 
   return (
     <div>
@@ -66,8 +72,9 @@ function NewsPage() {
             {data.map((item) => (
               <article
                 key={item.id}
-                className="card-elevated overflow-hidden rounded-xl border border-border bg-card"
+                className="card-elevated overflow-hidden rounded-lg border border-border bg-card"
               >
+                <Button variant="ghost" className="block h-auto w-full whitespace-normal rounded-none p-0 text-left hover:bg-secondary hover:text-foreground" aria-label={`Läs ${item.title}`} onClick={() => setSelectedId(item.id)}>
                 {item.image_url ? (
                   <img
                     src={item.image_url}
@@ -82,15 +89,17 @@ function NewsPage() {
                     {new Date(item.published_at).toLocaleDateString("sv-SE")}
                   </p>
                   <h3 className="text-2xl">{item.title}</h3>
-                  <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">
+                  <p className="mt-3 line-clamp-3 whitespace-pre-line break-words text-sm text-muted-foreground">
                     {item.body}
                   </p>
                 </div>
+                </Button>
               </article>
             ))}
           </div>
         )}
       </section>
+      <ContentDetailDialog kind="news" onClose={() => setSelectedId(null)} item={selected ? { title: selected.title, text: selected.body, imageUrl: selected.image_url, detail: new Date(selected.published_at).toLocaleDateString('sv-SE') } : null} />
     </div>
   );
 }

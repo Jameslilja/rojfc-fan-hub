@@ -4,3 +4,8 @@
 - [x] Namn och profilbild.
 - [x] Testa behörigheter, redigering, adminlista, profil och utloggning.
 - [ ] James behöver öppna sitt inbjudningsmejl och välja lösenord; mottagande och aktivering kan bara verifieras av James.
+
+# Spelare och nyheter
+- [ ] Klickbara spelare och nyheter med stängbara detaljrutor.
+- [ ] Admin kan spara spelarinfo och ladda upp bilder till spelare och nyheter.
+- [ ] Verifiera sparande och detaljrutor med och utan bild.

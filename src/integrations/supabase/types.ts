@@ -70,8 +70,10 @@ export type Database = {
       }
       players: {
         Row: {
+          biography: string
           created_at: string
           id: string
+          image_url: string | null
           name: string
           position: string | null
           shirt_number: number | null
@@ -79,8 +81,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          biography?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           name: string
           position?: string | null
           shirt_number?: number | null
@@ -88,8 +92,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          biography?: string
           created_at?: string
           id?: string
+          image_url?: string | null
           name?: string
           position?: string | null
           shirt_number?: number | null

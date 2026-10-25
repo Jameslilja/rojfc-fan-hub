@@ -1,5 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ContentDetailDialog } from "@/components/ContentDetailDialog";
+import { resolveClubImages } from "@/lib/club-media";
 
 import { supabase } from "@/integrations/supabase/client";
 
@@ -21,18 +26,20 @@ export const Route = createFileRoute("/truppen")({
 });
 
 function SquadPage() {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const { data, isLoading } = useQuery({
     queryKey: ["players"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
-        .select("id, name, shirt_number, position, sort_order")
+        .select("id, name, shirt_number, position, sort_order, biography, image_url")
         .order("sort_order")
         .order("name");
       if (error) throw error;
-      return data;
+      return resolveClubImages(data);
     },
   });
+  const selected = data?.find(player => player.id === selectedId);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-14">
@@ -48,23 +55,28 @@ function SquadPage() {
           {data?.map((p) => (
             <li
               key={p.id}
-              className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3"
+              className="overflow-hidden rounded-lg border border-border bg-card"
             >
+              <Button variant="ghost" aria-label={`Visa ${p.name}`} onClick={() => setSelectedId(p.id)} className="h-auto min-h-20 w-full justify-start gap-3 whitespace-normal rounded-none px-4 py-3 text-left hover:bg-secondary hover:text-foreground">
+              {p.image_url ? <img src={p.image_url} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-md object-cover" /> : null}
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground">
                 {p.shirt_number ?? "–"}
               </span>
-              <div className="min-w-0">
-                <p className="truncate font-semibold">{p.name}</p>
+              <div className="min-w-0 flex-1">
+                <p className="break-words font-semibold">{p.name}</p>
                 {p.position ? (
                   <p className="text-xs uppercase tracking-widest text-muted-foreground">
                     {p.position}
                   </p>
                 ) : null}
               </div>
+              <ChevronRight className="shrink-0 text-muted-foreground" />
+              </Button>
             </li>
           ))}
         </ul>
       )}
+      <ContentDetailDialog kind="player" onClose={() => setSelectedId(null)} item={selected ? { title: selected.name, text: selected.biography, imageUrl: selected.image_url, detail: [`Tröjnummer ${selected.shirt_number ?? '–'}`, selected.position].filter(Boolean).join(' · ') } : null} />
     </div>
   );
 }
