@@ -1,0 +1,1 @@
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS biography text NOT NULL DEFAULT '', ADD COLUMN IF NOT EXISTS image_url text;
