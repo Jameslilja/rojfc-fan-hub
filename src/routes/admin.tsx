@@ -12,6 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdminAuth } from "@/lib/auth-context";
 import { AdminInvites, AdminProfile } from "@/components/AdminExtras";
+import { ClubImageField } from "@/components/ClubImageField";
+import { uploadClubImage } from "@/lib/club-media";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
@@ -183,10 +185,11 @@ function NewsAdmin() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
-    queryKey: ["news"],
+    queryKey: ["admin", "news"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("news")
@@ -199,7 +202,8 @@ function NewsAdmin() {
 
   const create = useMutation({
     mutationFn: async () => {
-      const values = { title: title.trim(), body, image_url: imageUrl || null };
+      const savedImage = await uploadClubImage(imageFile, imageUrl);
+      const values = { title: title.trim(), body, image_url: savedImage };
       const { error } = editingId ? await supabase.from('news').update(values).eq('id', editingId) : await supabase.from('news').insert(values);
       if (error) throw error;
     },
@@ -207,9 +211,11 @@ function NewsAdmin() {
       setTitle("");
       setBody("");
       setImageUrl("");
+      setImageFile(null);
       toast.success(editingId ? "Nyhet uppdaterad" : "Nyhet publicerad");
       setEditingId(null);
       qc.invalidateQueries({ queryKey: ["news"] });
+      qc.invalidateQueries({ queryKey: ["admin", "news"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -222,6 +228,7 @@ function NewsAdmin() {
     onSuccess: () => {
       toast.success("Nyhet borttagen");
       qc.invalidateQueries({ queryKey: ["news"] });
+      qc.invalidateQueries({ queryKey: ["admin", "news"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -244,14 +251,11 @@ function NewsAdmin() {
           <Label htmlFor="n-body">Text</Label>
           <Textarea id="n-body" rows={5} value={body} onChange={(e) => setBody(e.target.value)} />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="n-img">Bild-URL (valfritt)</Label>
-          <Input id="n-img" type="url" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} />
-        </div>
+        <ClubImageField id="n-img" imageUrl={imageUrl} file={imageFile} onUrlChange={setImageUrl} onFileChange={setImageFile} disabled={create.isPending} />
         <Button type="submit" disabled={create.isPending}>
           <Save className="mr-2 h-4 w-4" /> {editingId ? 'Spara nyhet' : 'Publicera'}
         </Button>
-        {editingId && <Button type="button" variant="ghost" onClick={() => { setEditingId(null); setTitle(''); setBody(''); setImageUrl(''); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
+        {editingId && <Button type="button" variant="ghost" disabled={create.isPending} onClick={() => { setEditingId(null); setTitle(''); setBody(''); setImageUrl(''); setImageFile(null); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
       </form>
 
       <div className="space-y-3">
@@ -267,7 +271,7 @@ function NewsAdmin() {
               </p>
             </div>
             <div className="flex shrink-0 gap-1">
-            <Button variant="ghost" size="icon" aria-label={`Redigera ${item.title}`} title="Redigera nyhet" onClick={() => { setEditingId(item.id); setTitle(item.title); setBody(item.body); setImageUrl(item.image_url ?? ''); }}><Pencil className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" disabled={create.isPending} aria-label={`Redigera ${item.title}`} title="Redigera nyhet" onClick={() => { setEditingId(item.id); setTitle(item.title); setBody(item.body); setImageUrl(item.image_url ?? ''); setImageFile(null); }}><Pencil className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" aria-label={`Ta bort ${item.title}`} title="Ta bort nyhet" disabled={remove.isPending} onClick={() => { if (window.confirm('Ta bort nyheten?')) remove.mutate(item.id); }}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>
@@ -284,14 +288,17 @@ function PlayersAdmin() {
   const [name, setName] = useState("");
   const [number, setNumber] = useState("");
   const [position, setPosition] = useState("");
+  const [biography, setBiography] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
-    queryKey: ["players"],
+    queryKey: ["admin", "players"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("players")
-        .select("id, name, shirt_number, position, sort_order")
+        .select("id, name, shirt_number, position, sort_order, biography, image_url")
         .order("sort_order")
         .order("name");
       if (error) throw error;
@@ -305,6 +312,8 @@ function PlayersAdmin() {
         name: name.trim(),
         shirt_number: number ? Number(number) : null,
         position: position || null,
+        biography,
+        image_url: await uploadClubImage(imageFile, imageUrl),
       };
       const { error } = editingId ? await supabase.from('players').update(values).eq('id', editingId) : await supabase.from('players').insert({ ...values, sort_order: 100 });
       if (error) throw error;
@@ -313,9 +322,13 @@ function PlayersAdmin() {
       setName("");
       setNumber("");
       setPosition("");
+      setBiography("");
+      setImageUrl("");
+      setImageFile(null);
       toast.success(editingId ? "Spelare uppdaterad" : "Spelare tillagd");
       setEditingId(null);
       qc.invalidateQueries({ queryKey: ["players"] });
+      qc.invalidateQueries({ queryKey: ["admin", "players"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -328,6 +341,7 @@ function PlayersAdmin() {
     onSuccess: () => {
       toast.success("Spelare borttagen");
       qc.invalidateQueries({ queryKey: ["players"] });
+      qc.invalidateQueries({ queryKey: ["admin", "players"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -358,10 +372,15 @@ function PlayersAdmin() {
           <Label htmlFor="p-pos">Position</Label>
           <Input id="p-pos" value={position} onChange={(e) => setPosition(e.target.value)} />
         </div>
+        <div className="space-y-2 sm:col-span-4">
+          <Label htmlFor="p-bio">Spelarinfo</Label>
+          <Textarea id="p-bio" rows={5} value={biography} onChange={e => setBiography(e.target.value)} />
+        </div>
+        <div className="sm:col-span-4"><ClubImageField id="p-img" imageUrl={imageUrl} file={imageFile} onUrlChange={setImageUrl} onFileChange={setImageFile} disabled={create.isPending} /></div>
         <Button type="submit" disabled={create.isPending} className="sm:col-span-4 sm:w-fit">
           <Save className="mr-2 h-4 w-4" /> {editingId ? 'Spara spelare' : 'Lägg till spelare'}
         </Button>
-        {editingId && <Button type="button" variant="ghost" className="sm:col-span-4 sm:w-fit" onClick={() => { setEditingId(null); setName(''); setNumber(''); setPosition(''); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
+        {editingId && <Button type="button" variant="ghost" disabled={create.isPending} className="sm:col-span-4 sm:w-fit" onClick={() => { setEditingId(null); setName(''); setNumber(''); setPosition(''); setBiography(''); setImageUrl(''); setImageFile(null); }}><X className="mr-2 h-4 w-4" />Avbryt</Button>}
       </form>
 
       <div className="grid gap-2 sm:grid-cols-2">
@@ -375,7 +394,7 @@ function PlayersAdmin() {
               {p.name}
             </span>
             <div className="flex shrink-0 gap-1">
-            <Button variant="ghost" size="icon" aria-label={`Redigera ${p.name}`} title="Redigera spelare" onClick={() => { setEditingId(p.id); setName(p.name); setNumber(p.shirt_number?.toString() ?? ''); setPosition(p.position ?? ''); }}><Pencil className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" disabled={create.isPending} aria-label={`Redigera ${p.name}`} title="Redigera spelare" onClick={() => { setEditingId(p.id); setName(p.name); setNumber(p.shirt_number?.toString() ?? ''); setPosition(p.position ?? ''); setBiography(p.biography); setImageUrl(p.image_url ?? ''); setImageFile(null); }}><Pencil className="h-4 w-4" /></Button>
             <Button variant="ghost" size="icon" aria-label={`Ta bort ${p.name}`} title="Ta bort spelare" disabled={remove.isPending} onClick={() => { if (window.confirm('Ta bort spelaren?')) remove.mutate(p.id); }}>
               <Trash2 className="h-4 w-4 text-destructive" />
             </Button>

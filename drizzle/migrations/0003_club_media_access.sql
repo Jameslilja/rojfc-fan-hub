@@ -1,0 +1,4 @@
+CREATE POLICY "Club media are readable" ON storage.objects FOR SELECT TO anon, authenticated USING (bucket_id = 'club-media');
+CREATE POLICY "Admins upload club media" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'club-media' AND public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins update club media" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'club-media' AND public.has_role(auth.uid(), 'admin')) WITH CHECK (bucket_id = 'club-media' AND public.has_role(auth.uid(), 'admin'));
+CREATE POLICY "Admins delete club media" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'club-media' AND public.has_role(auth.uid(), 'admin'));
