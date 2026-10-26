@@ -3,4 +3,4 @@ export const SHOP_URL =
 
 export const INSTAGRAM_URL = "https://www.instagram.com/rojfc24/";
 
-export const FACEBOOK_URL = "https://www.facebook.com/profile.php?id=61594380602921";
+export const FACEBOOK_URL = "https://www.facebook.com/people/Roj-Fc/61594380602921/";
