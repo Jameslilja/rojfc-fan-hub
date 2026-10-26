@@ -6,6 +6,6 @@
 - [ ] James behöver öppna sitt inbjudningsmejl och välja lösenord; mottagande och aktivering kan bara verifieras av James.
 
 # Spelare och nyheter
-- [ ] Klickbara spelare och nyheter med stängbara detaljrutor.
-- [ ] Admin kan spara spelarinfo och ladda upp bilder till spelare och nyheter.
-- [ ] Verifiera sparande och detaljrutor med och utan bild.
+- [x] Klickbara spelare och nyheter med stängbara detaljrutor.
+- [x] Admin kan spara spelarinfo och ladda upp bilder till spelare och nyheter.
+- [x] Verifiera sparande och detaljrutor med och utan bild.
