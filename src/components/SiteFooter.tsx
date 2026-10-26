@@ -1,7 +1,7 @@
-import { Instagram } from "lucide-react";
+import { Facebook, Instagram } from "lucide-react";
 
 import logo from "@/assets/roj-fc-logo.png.asset.json";
-import { INSTAGRAM_URL, SHOP_URL } from "@/lib/links";
+import { FACEBOOK_URL, INSTAGRAM_URL, SHOP_URL } from "@/lib/links";
 
 export function SiteFooter() {
   return (
